@@ -3,10 +3,8 @@ import os
 import webbrowser
 from pathlib import Path
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.types import (
-    InlineKeyboardButton, InlineKeyboardMarkup,
-    InputMediaPhoto
-)
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InputFile, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from large_messages import *
 from vk_api_json import get_images
@@ -18,7 +16,6 @@ dp = Dispatcher()
 TMP_PATH = "tmp"
 Path(TMP_PATH).mkdir(parents=True, exist_ok=True)
 UPDATE_INTERVAL = 6 * 60 * 60  # 6 часов
-
 
 # -------------------------------
 #      Автообновление фото
@@ -184,4 +181,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
