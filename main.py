@@ -4,7 +4,7 @@ import webbrowser
 from pathlib import Path
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.types import InputFile, InputMediaPhoto
+from aiogram.types import FSInputFile, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from large_messages import *
 from vk_api_json import get_images
@@ -112,7 +112,7 @@ async def cmd_schedule(message: types.Message):
     media = []
     for filename in image_files:
         file_path = os.path.join(TMP_PATH, filename)
-        media.append(InputMediaPhoto(media=InputFile(file_path)))
+        media.append(InputMediaPhoto(media=FSInputFile(file_path)))
 
     await bot.send_media_group(message.chat.id, media)
 
@@ -181,5 +181,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
