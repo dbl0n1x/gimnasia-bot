@@ -1,6 +1,7 @@
 import asyncio
 import os
 import webbrowser
+from pathlib import Path
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import (
     InlineKeyboardButton, InlineKeyboardMarkup,
@@ -15,6 +16,7 @@ bot = Bot(API_TOKEN)
 dp = Dispatcher()
 
 TMP_PATH = "tmp"
+Path(TMP_PATH).mkdir(parents=True, exist_ok=True)
 UPDATE_INTERVAL = 6 * 60 * 60  # 6 часов
 
 
@@ -31,7 +33,6 @@ async def auto_update():
                 print("ℹ️ Автообновление: новых фото нет.")
         except Exception as e:
             print("❌ Ошибка при автообновлении:", e)
-
         await asyncio.sleep(UPDATE_INTERVAL)
 
 
