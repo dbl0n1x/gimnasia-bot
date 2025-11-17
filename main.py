@@ -115,7 +115,7 @@ async def cmd_schedule(message: types.Message):
     media = []
     for filename in image_files:
         file_path = os.path.join(TMP_PATH, filename)
-        media.append(InputMediaPhoto(type="photo", media=open(file_path, "rb")))
+        media.append(InputMediaPhoto(media=InputFile(file_path)))
 
     await bot.send_media_group(message.chat.id, media)
 
@@ -184,3 +184,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
