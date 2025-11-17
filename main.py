@@ -4,7 +4,7 @@ import webbrowser
 from pathlib import Path
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.types import FSInputFile, InputMediaPhoto
+from aiogram.types import InputFile, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from large_messages import *
 from vk_api_json import get_images
@@ -16,6 +16,7 @@ dp = Dispatcher()
 TMP_PATH = "tmp"
 Path(TMP_PATH).mkdir(parents=True, exist_ok=True)
 UPDATE_INTERVAL = 6 * 60 * 60  # 6 часов
+
 
 # -------------------------------
 #      Автообновление фото
@@ -38,6 +39,13 @@ async def auto_update():
 # -------------------------------
 @dp.message(F.text == "/start")
 async def cmd_start(message: types.Message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton("📚 Получить расписание")
+    btn2 = types.KeyboardButton("👩‍🏫 Просмотреть список учителей")
+    btn3 = types.KeyboardButton("🗣️ Устное собеседование")
+    btn4 = types.KeyboardButton("📖 ОГЭ")
+    markup.add(btn1, btn2)
+    markup.add(btn3, btn4)
     await message.answer(welcome_message, parse_mode="HTML")
 
 
@@ -112,7 +120,7 @@ async def cmd_schedule(message: types.Message):
     media = []
     for filename in image_files:
         file_path = os.path.join(TMP_PATH, filename)
-        media.append(InputMediaPhoto(media=FSInputFile(file_path)))
+        media.append(InputMediaPhoto(media=InputFile(file_path)))
 
     await bot.send_media_group(message.chat.id, media)
 
@@ -181,6 +189,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-
