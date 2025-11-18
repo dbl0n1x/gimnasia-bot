@@ -97,16 +97,15 @@ async def cmd_interview(message: types.Message):
     await message.answer("Либо можешь перепроверить здесь", reply_markup=kb)
 
 
-# -------------------------------
-#   Функция рассылки (пустышка)
-# -------------------------------
 def subscribe_a_mailing(user_id):
     print("Функция вызвана!")
     with sqlite3.connect("users.db") as conn:
         cursor = conn.cursor()
         cursor.execute("INSERT INTO mailing_list (user_id) VALUES (?)", (user_id, ))
-        print(cursor.fetchall())
+        
         conn.commit()
+        cursor.execute("SELECT * FROM mailing_list")
+        print(cursor.fetchall())
 
 
 @dp.message(F.text == "/schedule")
@@ -188,3 +187,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
