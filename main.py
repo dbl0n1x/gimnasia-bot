@@ -1,26 +1,39 @@
 import asyncio
-import os
-import webbrowser
-from pathlib import Path
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.types import InputFile, InputMediaPhoto
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from large_messages import *
+from aiogram.types import FSInputFile, InputMediaPhoto
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from vk_api_json import get_images
+from large_messages import *
+from pathlib import Path
+import webbrowser
+import sqlite3
+import os
 
-API_TOKEN = "8241773401:AAEpZwq2CIECAH69AgheN4BikCMwBtbAKUw"
-bot = Bot(API_TOKEN)
+bot = Bot("8241773401:AAEpZwq2CIECAH69AgheN4BikCMwBtbAKUw")
 dp = Dispatcher()
+
+db = sqlite3.connect('users.db')
+cursor = db.cursor()
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS mailing_list (
+               user_id  PRIMARY KEY
+)""")
+
+db.commit()
+db.close()
 
 TMP_PATH = "tmp"
 Path(TMP_PATH).mkdir(parents=True, exist_ok=True)
-UPDATE_INTERVAL = 6 * 60 * 60  # 6 часов
+UPDATE_INTERVAL = 6 * 60 * 60
 
+main_kb = ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="📚 Получить расписание"), KeyboardButton(text="👩‍🏫 Просмотреть список учителей")],
+        [KeyboardButton(text="🗣️ Устное собеседование"), KeyboardButton(text="📖 ОГЭ")]
+    ],
+    resize_keyboard=True
+)
 
-# -------------------------------
-#      Автообновление фото
-# -------------------------------
 async def auto_update():
     while True:
         try:
@@ -34,19 +47,9 @@ async def auto_update():
         await asyncio.sleep(UPDATE_INTERVAL)
 
 
-# -------------------------------
-#             Команды
-# -------------------------------
 @dp.message(F.text == "/start")
 async def cmd_start(message: types.Message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("📚 Получить расписание")
-    btn2 = types.KeyboardButton("👩‍🏫 Просмотреть список учителей")
-    btn3 = types.KeyboardButton("🗣️ Устное собеседование")
-    btn4 = types.KeyboardButton("📖 ОГЭ")
-    markup.add(btn1, btn2)
-    markup.add(btn3, btn4)
-    await message.answer(welcome_message, parse_mode="HTML")
+    await message.answer(welcome_message, parse_mode="HTML", reply_markup=main_kb)
 
 
 @dp.message(F.text == "/teachers")
@@ -97,18 +100,19 @@ async def cmd_interview(message: types.Message):
 # -------------------------------
 #   Функция рассылки (пустышка)
 # -------------------------------
-def subscribe_a_mailing():
+def subscribe_a_mailing(user_id):
     print("Функция вызвана!")
+    with sqlite3.connect("users.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO mailing_list (user_id) VALUES (?)", (user_id, ))
+        print(cursor.fetchall())
+        conn.commit()
 
 
-# -------------------------------
-#          /schedule
-# -------------------------------
 @dp.message(F.text == "/schedule")
 async def cmd_schedule(message: types.Message):
     image_files = [f for f in os.listdir(TMP_PATH) if f.lower().endswith(".jpg")]
 
-    # Если нет изображений → пытаемся загрузить
     if not image_files:
         get_images()
         image_files = [f for f in os.listdir(TMP_PATH) if f.lower().endswith(".jpg")]
@@ -120,13 +124,13 @@ async def cmd_schedule(message: types.Message):
     media = []
     for filename in image_files:
         file_path = os.path.join(TMP_PATH, filename)
-        media.append(InputMediaPhoto(media=InputFile(file_path)))
+        media.append(InputMediaPhoto(media=FSInputFile(file_path)))
 
     await bot.send_media_group(message.chat.id, media)
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Да", callback_data="call_func")],
+            [InlineKeyboardButton(text="Да", callback_data="subscribe_on_mailing_callback")],
             [InlineKeyboardButton(text="Нет", callback_data="call_func")],
         ]
     )
@@ -170,18 +174,13 @@ async def cmd_update(message: types.Message):
 # -------------------------------
 #    Callback handler
 # -------------------------------
-@dp.callback_query(F.data == "call_func")
+@dp.callback_query(F.data == "subscribe_on_mailing_callback")
 async def callback_handler(callback: types.CallbackQuery):
-    subscribe_a_mailing()
+    subscribe_a_mailing(callback.from_user.id)
     await callback.answer("Функция вызвана!")
 
-
-# -------------------------------
-#            Запуск
-# -------------------------------
 async def main():
-    # Запуск фоновой задачи автообновления
-    asyncio.create_task(auto_update())
+    asyncio.create_task(auto_update()) # автообновление
 
     print("Бот запущен!")
     await dp.start_polling(bot)
