@@ -5,12 +5,11 @@ from aiogram.types import FSInputFile, InputMediaPhoto
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from vk_api_json import get_images
 from large_messages import *
-from pathlib import Path
 import webbrowser
 import sqlite3
 import os
 
-bot = Bot("8241773401:AAEpZwq2CIECAH69AgheN4BikCMwBtbAKUw")
+bot = Bot("8133820940:AAEj20tXCBZVzLHnwHaiXVi5HCd_C5dQHb4")
 dp = Dispatcher()
 
 db = sqlite3.connect('users.db')
@@ -24,7 +23,6 @@ db.commit()
 db.close()
 
 TMP_PATH = "tmp"
-Path(TMP_PATH).mkdir(parents=True, exist_ok=True)
 UPDATE_INTERVAL = 6 * 60 * 60
 
 main_kb = ReplyKeyboardMarkup(keyboard=[
@@ -39,7 +37,32 @@ async def auto_update():
         try:
             updated = get_images(update=True)
             if updated:
-                print("📢 Автообновление: новые фото загружены!")
+                print("📢 Автообновление: новые фото загружены! Отправляю рассылку...")
+                with sqlite3.connect("users.db") as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT * FROM mailing_list")
+                    users = cursor.fetchall()
+                    print(users)
+                    for user_id in users:
+                        media = []
+                        image_files = [f for f in os.listdir(TMP_PATH) if f.lower().endswith(".jpg")]
+                        for filename in image_files:
+                            file_path = os.path.join(TMP_PATH, filename)
+                            media.append(InputMediaPhoto(media=FSInputFile(file_path)))
+
+                        user_id = str(user_id)
+                        user_id = user_id.replace('(', '').replace(')', '')
+                        await bot.send_media_group(user_id, media)
+                        kb = InlineKeyboardMarkup(
+                            inline_keyboard=[
+                                [InlineKeyboardButton(text="Да", callback_data="subscribe_on_mailing_callback")],
+                                [InlineKeyboardButton(text="Нет", callback_data="unsubscribe_on_mailing_callback")],
+                            ]
+                        )
+                    
+                        # await message.answer(schedule_message, reply_markup=kb)
+                        await asyncio.sleep(0.05)  # 50 мс пауза
+                    conn.commit()
             else:
                 print("ℹ️ Автообновление: новых фото нет.")
         except Exception as e:
@@ -97,17 +120,22 @@ async def cmd_interview(message: types.Message):
     await message.answer("Либо можешь перепроверить здесь", reply_markup=kb)
 
 
-def subscribe_a_mailing(user_id):
-    print("Функция вызвана!")
+def subscribe_on_mailing(user_id: int):
     with sqlite3.connect("users.db") as conn:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO mailing_list (user_id) VALUES (?)", (user_id, ))
+        cursor.execute("INSERT OR IGNORE INTO mailing_list (user_id) VALUES (?)", (user_id,))
         
         conn.commit()
-        cursor.execute("SELECT * FROM mailing_list")
-        print(cursor.fetchall())
 
+def unsubscribe_on_mailing(user_id: int):
+    with sqlite3.connect("users.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM mailing_list WHERE user_id = ?", (user_id,))
+        conn.commit()
 
+# -------------------------------
+#        /schedule
+# -------------------------------
 @dp.message(F.text == "/schedule")
 async def cmd_schedule(message: types.Message):
     image_files = [f for f in os.listdir(TMP_PATH) if f.lower().endswith(".jpg")]
@@ -130,7 +158,7 @@ async def cmd_schedule(message: types.Message):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Да", callback_data="subscribe_on_mailing_callback")],
-            [InlineKeyboardButton(text="Нет", callback_data="call_func")],
+            [InlineKeyboardButton(text="Нет", callback_data="unsubscribe_on_mailing_callback")],
         ]
     )
 
@@ -170,13 +198,28 @@ async def cmd_update(message: types.Message):
         await message.answer("ℹ️ Новых расписаний нет.")
 
 
-# -------------------------------
-#    Callback handler
-# -------------------------------
+
 @dp.callback_query(F.data == "subscribe_on_mailing_callback")
 async def callback_handler(callback: types.CallbackQuery):
-    subscribe_a_mailing(callback.from_user.id)
-    await callback.answer("Функция вызвана!")
+    print("ale")
+    subscribe_on_mailing(callback.from_user.id)
+    await callback.answer("Вы подписались на рассылку")
+
+@dp.callback_query(F.data == "unsubscribe_on_mailing_callback")
+async def callback_handler(callback: types.CallbackQuery):
+    unsubscribe_on_mailing(callback.from_user.id)
+    await callback.answer("Вы отписались от рассылки")
+
+@dp.message(F.text)
+async def handle_inline(message: types.Message):
+    if (message.text == "📚 Получить расписание"):
+        await cmd_schedule(message)
+    elif (message.text == "👩‍🏫 Просмотреть список учителей"):
+        await cmd_teachers(message)
+    elif (message.text == "🗣️ Устное собеседование"):
+        await cmd_interview(message)
+    elif (message.text == "📖 ОГЭ"):
+        await cmd_oge(message)
 
 async def main():
     asyncio.create_task(auto_update()) # автообновление
@@ -187,4 +230,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
