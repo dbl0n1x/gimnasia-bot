@@ -8,13 +8,8 @@ from large_messages import *
 import webbrowser
 import sqlite3
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-print(BOT_TOKEN)
-bot = Bot(BOT_TOKEN)
+bot = Bot("8133820940:AAEj20tXCBZVzLHnwHaiXVi5HCd_C5dQHb4")
 dp = Dispatcher()
 
 db = sqlite3.connect('users.db')
@@ -235,5 +230,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
