@@ -44,23 +44,24 @@ async def auto_update():
                     users = cursor.fetchall()
                     print(users)
                     for user_id in users:
-                        media = []
-                        image_files = [f for f in os.listdir(TMP_PATH) if f.lower().endswith(".jpg")]
-                        for filename in image_files:
-                            file_path = os.path.join(TMP_PATH, filename)
-                            media.append(InputMediaPhoto(media=FSInputFile(file_path)))
-
                         user_id = str(user_id)
                         user_id = user_id.replace('(', '').replace(')', '')
-                        await bot.send_media_group(user_id, media)
+                        
+                        for post in updated:
+                            media = [InputMediaPhoto(media=FSInputFile(path)) for path in post]
+                            await bot.send_media_group(user_id, media)
+                            await asyncio.sleep(0.3)
+
+                        #await bot.send_media_group(user_id, media)
                         kb = InlineKeyboardMarkup(
                             inline_keyboard=[
                                 [InlineKeyboardButton(text="Да", callback_data="subscribe_on_mailing_callback")],
                                 [InlineKeyboardButton(text="Нет", callback_data="unsubscribe_on_mailing_callback")],
                             ]
                         )
+
+                        await bot.send_message(user_id, schedule_message, reply_markup=kb)
                     
-                        # await message.answer(schedule_message, reply_markup=kb)
                         await asyncio.sleep(0.05)  # 50 мс пауза
                     conn.commit()
             else:
@@ -138,22 +139,23 @@ def unsubscribe_on_mailing(user_id: int):
 # -------------------------------
 @dp.message(F.text == "/schedule")
 async def cmd_schedule(message: types.Message):
+    await bot.send_message(message.chat.id, "⏳ Ожидайте... получаю расписание ⏳")
     image_files = [f for f in os.listdir(TMP_PATH) if f.lower().endswith(".jpg")]
 
     if not image_files:
-        get_images()
+        get_images(update=True)
         image_files = [f for f in os.listdir(TMP_PATH) if f.lower().endswith(".jpg")]
 
     if not image_files:
         await message.answer("Изображения не найдены 😕")
         return
 
-    media = []
-    for filename in image_files:
-        file_path = os.path.join(TMP_PATH, filename)
-        media.append(InputMediaPhoto(media=FSInputFile(file_path)))
+    posts = get_images(update=False)
 
-    await bot.send_media_group(message.chat.id, media)
+    for post in posts:
+        media = [InputMediaPhoto(media=FSInputFile(path)) for path in post]
+        await bot.send_media_group(message.chat.id, media)
+        await asyncio.sleep(0.3)
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -193,7 +195,7 @@ async def cmd_update(message: types.Message):
     updated = get_images(update=True)
 
     if updated:
-        await message.answer("✅ Есть новые расписания! Используй /schedule")
+        await message.answer("✅ Готово! Используй /schedule")
     else:
         await message.answer("ℹ️ Новых расписаний нет.")
 
@@ -201,7 +203,6 @@ async def cmd_update(message: types.Message):
 
 @dp.callback_query(F.data == "subscribe_on_mailing_callback")
 async def callback_handler(callback: types.CallbackQuery):
-    print("ale")
     subscribe_on_mailing(callback.from_user.id)
     await callback.answer("Вы подписались на рассылку")
 

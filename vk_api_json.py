@@ -18,6 +18,7 @@ def clear_old_photos():
 
 def get_images(update=False):
     Path(TMP_PATH).mkdir(parents=True, exist_ok=True)
+
     response = requests.get("https://api.vk.com/method/wall.get", params={
         "access_token": VK_APP_TOKEN,
         "domain": GROUP_DOMAIN,
@@ -25,35 +26,45 @@ def get_images(update=False):
         "v": "5.199"
     }).json()
 
-    photos_found = False
-
     items = response.get("response", {}).get("items", [])
     if not items:
-        return False
+        return []
 
-    # Очищаем tmp только один раз
-    for file in os.listdir(TMP_PATH):
-        os.remove(os.path.join(TMP_PATH, file))
+    # Полностью очищаем tmp если update=True
+    if (update):
+        for f in os.listdir(TMP_PATH):
+            os.remove(os.path.join(TMP_PATH, f))
 
-    index = 0
+    result_posts = []  # список постов, каждый пост — список файлов картинок
 
+    post_index = 0
     for item in items:
         text = item.get("text", "")
-        if TRIGGER_WORD in text:
-            attachments = item.get("attachments", [])
-            for att in attachments:
-                if att["type"] == "photo":
-                    photo = att["photo"]
-                    if "orig_photo" in photo:
-                        url = photo["orig_photo"]["url"]
-                    else:
-                        url = sorted(photo["sizes"], key=lambda s: s["width"], reverse=True)[0]["url"]
+        if TRIGGER_WORD not in text:
+            continue
 
-                    resp = requests.get(url)
-                    if resp.status_code == 200:
-                        with open(f"{TMP_PATH}/photo_{index}.jpg", "wb") as f:
-                            f.write(resp.content)
-                        index += 1
-                        photos_found = True
+        attachments = item.get("attachments", [])
+        post_images = []
 
-    return photos_found
+        for att in attachments:
+            if att["type"] != "photo":
+                continue
+
+            photo = att["photo"]
+            if "orig_photo" in photo:
+                url = photo["orig_photo"]["url"]
+            else:
+                url = sorted(photo["sizes"], key=lambda s: s["width"], reverse=True)[0]["url"]
+
+            resp = requests.get(url)
+            if resp.status_code == 200:
+                filename = f"{TMP_PATH}/post{post_index}_img{len(post_images)}.jpg"
+                with open(filename, "wb") as f:
+                    f.write(resp.content)
+                post_images.append(filename)
+
+        if post_images:
+            result_posts.append(post_images)
+            post_index += 1
+
+    return result_posts
