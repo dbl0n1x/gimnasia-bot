@@ -9,7 +9,7 @@ import webbrowser
 import sqlite3
 import os
 
-bot = Bot("8133820940:AAEj20tXCBZVzLHnwHaiXVi5HCd_C5dQHb4")
+bot = Bot("8241773401:AAGpRQm9W0IKo5CcmewG-Kq9kq64P0zihsQ")
 dp = Dispatcher()
 
 db = sqlite3.connect('users.db')
@@ -231,3 +231,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
